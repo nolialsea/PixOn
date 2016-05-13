@@ -1,0 +1,47 @@
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="PixOn Todos">
+        <meta name="author" content="Noli">
+        <title>PixOn Todos</title>
+        <script src="views/jquery.js"></script>
+        <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+        <script src="views/socketio.js"></script>
+        <link rel="stylesheet" href="views/main.css">
+    </head>
+    
+    
+    <body>
+        <div class="container">
+            <header>
+                <h1>Todo List (<span id="taskCounter">0</span>)</h1>
+                
+                <label class="hide-completed">
+                    <input type="checkbox" />
+                    Hide Completed Tasks
+                </label>
+                
+                <!--{{> loginButtons}}-->
+                
+                <form class="new-task" id="formTask">
+                    <input id="inpTask" type="text" name="text" placeholder="Type to add new tasks" />
+                </form>
+            
+            </header>
+        
+        
+            <ul id="ulTasks">
+                <!--<li class="{{#if checked}}checked{{/if}}">
+                    <button class="delete">&times;</button>
+                    
+                    <input type="checkbox" checked="{{checked}}" class="toggle-checked" />
+                    
+                    <span class="text"><strong>{{username}}</strong> - {{text}}</span>
+                </li>-->
+            </ul>
+        </div>
+        <script src="views/todos.js"></script>
+    </body>
+</html>

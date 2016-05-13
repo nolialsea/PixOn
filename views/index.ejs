@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Pixel Online">
+        <meta name="author" content="Noli">
+        <title>PixOn</title>
+        <script src="views/jquery.js"></script>
+        <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="views/bootstrap/css/bootstrap.min.css">
+        <!-- Optional theme -->
+        <link rel="stylesheet" href="views/bootstrap/css/bootstrap-theme.min.css">
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="views/bootstrap/js/bootstrap.min.js"></script>
+        <link rel="stylesheet" href="views/bootstrap_color_picker/css/bootstrap-colorpicker.min.css">
+        <link rel="stylesheet" href="views/bootstrap_color_picker/css/bootstrap-colorpicker-plus.min.css">
+        <script src="views/bootstrap_color_picker/js/bootstrap-colorpicker.min.js"></script>
+        <script src="views/bootstrap_color_picker/js/bootstrap-colorpicker-plus.js"></script>
+        <script src="views/load-image.min.js"></script>
+        <script src="views/socketio.js"></script>
+        <script src="views/pixon.js"></script>
+    </head>
+
+    <style>
+        .center{
+            display: block;
+          	margin: auto;
+          	text-align: center;
+          	//position: absolute;
+          	left: 25%;
+          	top: 10px;
+        }
+        .big{
+            font-size: 100px;
+        }
+        canvas{
+            border: 1px solid black;
+            position: absolute;
+            cursor: crosshair;
+        }
+        #canvas{
+            z-index: 0;
+        }
+        #canvasGrid{
+            z-index: 1;
+        }
+        .colorpicker-container{
+            display: block;
+            position: absolute;
+            width: 200px;
+            left: 20px;
+            top: 20px;
+            z-index: 2;
+        }
+        
+        #dragSpan{
+            float: right;
+            font-size: 2.2em;
+        }
+    </style>
+
+    <body id="body">
+        <div class="colorpicker-container panel panel-default" id="colorPickerContainer">
+            <div class="colorpickerplus-embed">
+                <div class="colorpickerplus-container"></div>
+            </div>
+            <button type="button" class="btn btn-default" id="sizeMinus">-</button>
+            <button type="button" class="btn btn-default" id="sizePlus">+</button>
+            <button type="button" class="btn btn-default" id="hideGrid">Grid</button>
+            <input type="date" id="viewAtDate"/>
+            <input type="time" id="viewAtTime"/>
+            <button type="button" class="btn btn-default" id="btnViewAtDate">View at this date</button>
+            <span class="glyphicon glyphicon-move" id="dragSpan" aria-hidden="true"></span>
+        </div>
+        <canvas class="center" id="canvas"></canvas>
+        <canvas class="center" id="canvasGrid"></canvas>
+    </body>
+</html>
+

@@ -1,0 +1,12 @@
+{
+  "name": "node-ejs",
+  "description": "Noli's Pixel Online",
+  "main": "server.js",
+  "dependencies": {
+    "ejs": "*",
+    "express": "^4.6.1",
+    "express-session": "*",
+    "socket.io": "~1.3.6",
+    "sqlite3": "*"
+  }
+}
