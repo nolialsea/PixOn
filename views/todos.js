@@ -5,16 +5,19 @@ Date.prototype.yyyymmdd = function() {
  var yyyy = this.getFullYear().toString();
  var mm = (this.getMonth()+1).toString(); // getMonth() is zero-based
  var dd  = this.getDate().toString();
- return yyyy + "-" + (mm[1]?mm:"0"+mm[0])+ "-" + (dd[1]?dd:"0"+dd[0]); // padding
+ var hh = this.getHours().toString();
+ var MM = this.getMinutes().toString();
+ var ss = this.getSeconds().toString();
+ return yyyy + "-" + (mm[1]?mm:"0"+mm[0])+ "-" + (dd[1]?dd:"0"+dd[0]) + " " +
+  (hh[1]?hh:"0"+hh[0]) + ":" + (MM[1]?MM:"0"+MM[0]) + ":" + (ss[1]?ss:"0"+ss[0]); // padding
 };
 
 var t = $('#tasks').DataTable( {
-  "order": [[ 4, "desc" ]],
+  "order": [[ 3, "desc" ]],
   "columns": [
     { "width": "20%" },
     { "width": "50%" },
-    { "width": "5%" },
-    { "width": "5%" },
+    { "width": "10%" },
     { "width": "10%" },
     { "width": "10%" }
   ]
@@ -36,10 +39,9 @@ $("#formTask").on("submit", function(e){
 
 function addTask(task){
     t.row.add([
-      task.feature ? task.feature : "None",
+      task.feature ? feature[task.feature] : "None",
       task.task,
-      task.accepted ? true : false,
-      task.done + "%",
+      state[task.state],
       new Date(task.dateCreation).yyyymmdd(),
       'None <button type="button" class="btn btn-default btn-xs" aria-label="Left Align"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>'
     ]).draw(false);
@@ -52,6 +54,21 @@ function removeTask(id){
 
 socket.on('task', function(task){
     addTask(task);
+});
+
+socket.on('taskFeatures', function(taskFeatures){
+    for (var i=0; i<taskFeatures.length; i++){
+      var taskFeature = taskFeatures[i];
+      feature[taskFeature.id] = taskFeature.name;
+      $("#inpFeature").html($("#inpFeature").html()+"<option value="+taskFeature.id+">"+taskFeature.name+"</option>");
+    }
+});
+
+socket.on('taskStates', function(taskStates){
+    for (var i=0; i<taskStates.length; i++){
+      var taskState = taskStates[i];
+      state[taskState.id] = taskState.name;
+    }
 });
 
 socket.on('deleteTask', function(taskId){

@@ -53,10 +53,9 @@
         <div class="form-group">
           <label for="inpFeature">Feature</label>
           <select class="form-control" id="inpFeature">
-            <option value="1">Pixon</option>
-            <option value="2">Todo</option>
-            <option value="3">Account</option>
-            <option value="4">Script</option>
+            <% taskFeatures.forEach(function(taskFeature) { %>
+              <option value="<%= taskFeature.id %>"> <%= taskFeature.name %> </option>
+            <% }); %>
           </select>
 
           <div class = "form-group">
@@ -78,8 +77,7 @@
         <tr>
           <th>Feature</th>
           <th>Task</th>
-          <th>Accepted</th>
-          <th>Done</th>
+          <th>State</th>
           <th>Date</th>
           <th>User</th>
         </tr>
@@ -87,6 +85,16 @@
     </table>
   </div>
 
+  <script>
+    var feature = [];
+    var state = [];
+    <% taskFeatures.forEach(function(taskFeature) { %>
+      feature[<%= taskFeature.id %>] = "<%= taskFeature.name %>";
+    <% }); %>
+    <% taskStates.forEach(function(taskState) { %>
+      state[<%= taskState.id %>] = "<%= taskState.name %>";
+    <% }); %>
+  </script>
   <script src="views/todos.js"></script>
 </body>
 

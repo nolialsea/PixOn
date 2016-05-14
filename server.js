@@ -11,45 +11,90 @@ app.use('/views', express.static(__dirname + '/views'));
 var db = new sqlite3.Database('db.db');
 
 db.serialize(function() {
-    db.run("CREATE TABLE IF NOT EXISTS User("+
-        "id INTEGER PRIMARY KEY, "+
-        "login TEXT,"+
-        "password TEXT,"+
-        "rank INTEGER,"+
-        "dateCreation INTEGER"+
-    ")");
-    db.run("CREATE TABLE IF NOT EXISTS Task("+
-        "id INTEGER PRIMARY KEY,"+
-        "feature INTEGER,"+
-        "task TEXT,"+
-        "owner INTEGER DEFAULT 0,"+
-        "accepted INTEGER DEFAULT 0,"+
-        "done INTEGER DEFAULT 0,"+
-        "dateCreation INTEGER"+
-    ")");
-    db.run("CREATE TABLE IF NOT EXISTS TaskFeature("+
-        "id INTEGER PRIMARY KEY,"+
-        "name TEXT"+
-    ")");
-    db.run("CREATE TABLE IF NOT EXISTS TaskState("+
-        "id INTEGER PRIMARY KEY,"+
-        "name TEXT"+
-    ")");
-    db.run("CREATE TABLE IF NOT EXISTS Pixel("+
-        "id INTEGER PRIMARY KEY,"+
-        "x INTEGER,"+
-        "y INTEGER,"+
-        "r INTEGER,"+
-        "g INTEGER,"+
-        "b INTEGER,"+
-        "channel INTEGER DEFAULT 0,"+
-        "owner INTEGER DEFAULT 0,"+
-        "dateCreation INTEGER"+
-    ")");
+  db.run("CREATE TABLE IF NOT EXISTS UserRank("+
+      "id INTEGER PRIMARY KEY,"+
+      "name TEXT UNIQUE"+
+  ")");
+
+  db.run("CREATE TABLE IF NOT EXISTS User("+
+      "id INTEGER PRIMARY KEY, "+
+      "login TEXT UNIQUE,"+
+      "password TEXT,"+
+      "rank INTEGER,"+
+      "dateCreation INTEGER,"+
+      "FOREIGN KEY(rank) REFERENCES UserRank(id)"+
+  ")");
+
+  db.run("CREATE TABLE IF NOT EXISTS TaskState("+
+      "id INTEGER PRIMARY KEY,"+
+      "name TEXT UNIQUE"+
+  ")");
+
+  db.run("CREATE TABLE IF NOT EXISTS TaskFeature("+
+      "id INTEGER PRIMARY KEY,"+
+      "name TEXT UNIQUE"+
+  ")");
+
+  db.run("CREATE TABLE IF NOT EXISTS Task("+
+      "id INTEGER PRIMARY KEY,"+
+      "feature INTEGER,"+
+      "task TEXT,"+
+      "owner INTEGER,"+
+      "state INTEGER,"+
+      "dateCreation INTEGER,"+
+      "FOREIGN KEY(feature) REFERENCES TaskFeature(id),"+
+      "FOREIGN KEY(owner) REFERENCES User(id),"+
+      "FOREIGN KEY(state) REFERENCES TaskState(id)"+
+  ")");
+
+  db.run("CREATE TABLE IF NOT EXISTS Pixel("+
+      "id INTEGER PRIMARY KEY,"+
+      "x INTEGER,"+
+      "y INTEGER,"+
+      "r INTEGER,"+
+      "g INTEGER,"+
+      "b INTEGER,"+
+      "channel INTEGER DEFAULT 0,"+
+      "owner INTEGER,"+
+      "dateCreation INTEGER,"+
+      "FOREIGN KEY(owner) REFERENCES User(id)"+
+  ")");
+
+  db.all("SELECT id FROM TaskFeature", function(err, rows){
+    if (!err && (rows == null || rows.length == 0)){
+      var stmt = db.prepare("INSERT INTO TaskFeature (name) VALUES (?)");
+      stmt.run("General");
+      stmt.run("Pixon");
+      stmt.run("Todo");
+      stmt.run("Account");
+      stmt.run("Scripting");
+      stmt.finalize();
+
+      stmt = db.prepare("INSERT INTO TaskState (name) VALUES (?)");
+      stmt.run("Not accepted");
+      stmt.run("Accepted");
+      stmt.run("In progress");
+      stmt.run("Paused");
+      stmt.run("Finished");
+      stmt.finalize();
+
+      stmt = db.prepare("INSERT INTO UserRank (name) VALUES (?)");
+      stmt.run("Admin");
+      stmt.run("Moderator");
+      stmt.run("Contributor");
+      stmt.run("Banned");
+      stmt.finalize();
+    }
+  })
+
 });
 
 app.get('/todo', function(req, res) {
-	res.render('todo');
+  getAllTaskFeatures(function(taskFeatures){
+    getAllTaskStates(function(taskStates){
+      res.render('todo', {taskFeatures: taskFeatures, taskStates: taskStates});
+    });
+  });
 });
 
 app.get('*', function(req, res) {
@@ -84,8 +129,8 @@ function initPixelMap(r,g,b){
 
 //Todo list
 function insertTask(task){
-    var stmt = db.prepare("INSERT INTO Task (task, owner, accepted, done, feature, dateCreation) VALUES (?,?,?,?,?,?)");
-    stmt.run(task.task, 0,0,0, task.feature, new Date().getTime());
+    var stmt = db.prepare("INSERT INTO Task (task, owner, state, feature, dateCreation) VALUES (?,?,?,?,?)");
+    stmt.run(task.task, 1, 1, task.feature, new Date().getTime());
     stmt.finalize();
 }
 
@@ -107,6 +152,22 @@ function getLastTask(callback){
 
 function getAllTasks(callback){
     db.all("SELECT * FROM Task", function(err, rows) {
+        if (!err){
+            callback(rows);
+        }
+    });
+}
+
+function getAllTaskFeatures(callback){
+    db.all("SELECT * FROM TaskFeature", function(err, rows) {
+        if (!err){
+            callback(rows);
+        }
+    });
+}
+
+function getAllTaskStates(callback){
+    db.all("SELECT * FROM TaskState", function(err, rows) {
         if (!err){
             callback(rows);
         }
