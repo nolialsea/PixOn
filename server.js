@@ -1,6 +1,6 @@
 var express = require('express');
 var app = express();
-var port = 4200;
+var port = 4201;	//4200 is prod, 4201 is uat
 var server = app.listen(port);
 var io = require('socket.io').listen(server);
 var sqlite3 = require('sqlite3').verbose();
