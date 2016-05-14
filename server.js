@@ -15,15 +15,25 @@ db.serialize(function() {
         "id INTEGER PRIMARY KEY, "+
         "login TEXT,"+
         "password TEXT,"+
+        "rank INTEGER,"+
         "dateCreation INTEGER"+
     ")");
     db.run("CREATE TABLE IF NOT EXISTS Task("+
         "id INTEGER PRIMARY KEY,"+
+        "feature INTEGER,"+
         "task TEXT,"+
         "owner INTEGER DEFAULT 0,"+
         "accepted INTEGER DEFAULT 0,"+
         "done INTEGER DEFAULT 0,"+
         "dateCreation INTEGER"+
+    ")");
+    db.run("CREATE TABLE IF NOT EXISTS TaskFeature("+
+        "id INTEGER PRIMARY KEY,"+
+        "name TEXT"+
+    ")");
+    db.run("CREATE TABLE IF NOT EXISTS TaskState("+
+        "id INTEGER PRIMARY KEY,"+
+        "name TEXT"+
     ")");
     db.run("CREATE TABLE IF NOT EXISTS Pixel("+
         "id INTEGER PRIMARY KEY,"+
@@ -38,11 +48,11 @@ db.serialize(function() {
     ")");
 });
 
-app.get('/todo', function(req, res) { 
+app.get('/todo', function(req, res) {
 	res.render('todo');
 });
 
-app.get('*', function(req, res) { 
+app.get('*', function(req, res) {
 	res.render('index');
 });
 
@@ -60,7 +70,7 @@ function initPixelMap(r,g,b){
     if (b == null){
         r = g = b = 255;
     }
-    
+
     for (var channel=0; channel<conf.nbChannel; channel++){
         pixelMap[channel] = [];
         for (var i=0; i<conf.gridHeight; i++){
@@ -74,8 +84,8 @@ function initPixelMap(r,g,b){
 
 //Todo list
 function insertTask(task){
-    var stmt = db.prepare("INSERT INTO Task (task, owner, accepted, done) VALUES (?,?,?,?)");
-    stmt.run(task, 0,0,0);
+    var stmt = db.prepare("INSERT INTO Task (task, owner, accepted, done, feature, dateCreation) VALUES (?,?,?,?,?,?)");
+    stmt.run(task.task, 0,0,0, task.feature, new Date().getTime());
     stmt.finalize();
 }
 
@@ -162,9 +172,9 @@ function getLastPixelAt(x, y, callback){
 }
 
 function validatePixel(pixel){
-    if (pixel.channel >= 0 && pixel.channel < conf.nbChannel && pixel.x >= 0  && pixel.x < conf.gridWidth 
+    if (pixel.channel >= 0 && pixel.channel < conf.nbChannel && pixel.x >= 0  && pixel.x < conf.gridWidth
     && pixel.y >= 0 && pixel.y < conf.gridHeight){
-        return true;    
+        return true;
     }else{
         return false;
     }
@@ -172,54 +182,54 @@ function validatePixel(pixel){
 
 io.on('connection', function (socket) {
     socket.emit('init', {conf: conf});
-    
+
     getAllPixels(function(rows){
         socket.emit('pixels', rows);
     });
-    
+
     socket.on('getAllPixelsAt', function (timestamp) {
         getAllPixelsAt(timestamp, function(rows){
             socket.emit('allPixelsAt', rows);
         });
     });
-    
+
     socket.on('pixel', function (pixel) {
         if (validatePixel(pixel)){
             insertPixel(pixel);
             io.emit('pixel', pixel);
         }
     });
-    
+
     socket.on('pixels', function (pixels) {
         insertPixels(pixels);
         io.emit('pixels', pixels);
     });
-    
+
     socket.on('c', function (c) {
         if (c == "clear"){
             //Clear the canvas here
         }
     });
-    
+
     socket.on('task', function(task){
         insertTask(task);
         getLastTask(function(task){
             io.emit('task', task);
         });
     });
-    
+
     socket.on('deleteTask', function(taskId){
         deleteTask(taskId);
         io.emit('deleteTask', taskId);
     });
-    
+
     socket.on('getAllTasks', function () {
         getAllTasks(function(tasks){
             socket.emit('allTasks', tasks);
         });
     });
-    
+
     socket.on('disconnect', function () {
-        
+
     });
 });
