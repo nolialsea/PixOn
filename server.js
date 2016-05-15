@@ -68,6 +68,7 @@ db.serialize(function() {
       stmt.run("Todo");
       stmt.run("Account");
       stmt.run("Scripting");
+      stmt.run("Code");
       stmt.finalize();
 
       stmt = db.prepare("INSERT INTO TaskState (name) VALUES (?)");
@@ -108,25 +109,6 @@ var conf = {
     nbChannel: 1
 };
 
-/*global pixelMap*/
-pixelMap = [];
-initPixelMap();
-function initPixelMap(r,g,b){
-    if (b == null){
-        r = g = b = 255;
-    }
-
-    for (var channel=0; channel<conf.nbChannel; channel++){
-        pixelMap[channel] = [];
-        for (var i=0; i<conf.gridHeight; i++){
-            pixelMap[channel][i] = [];
-            for (var j=0; j<conf.gridWidth; j++){
-                pixelMap[channel][i][j] = getPixel(channel, r,g,b,i,j);
-            }
-        }
-    }
-}
-
 //Todo list
 function insertTask(task){
     var stmt = db.prepare("INSERT INTO Task (task, owner, state, feature, dateCreation) VALUES (?,?,?,?,?)");
@@ -134,10 +116,11 @@ function insertTask(task){
     stmt.finalize();
 }
 
-function deleteTask(taskId){
+function deleteTask(taskId, callback){
     var stmt = db.prepare("DELETE FROM Task WHERE id ="+taskId);
     stmt.run();
     stmt.finalize();
+    callback();
 }
 
 function getLastTask(callback){
@@ -248,6 +231,12 @@ io.on('connection', function (socket) {
         socket.emit('pixels', rows);
     });
 
+    socket.on('getAllTasks', function(){
+      getAllTasks(function(rows){
+          socket.emit('allTasks', rows);
+      });
+    })
+
     socket.on('getAllPixelsAt', function (timestamp) {
         getAllPixelsAt(timestamp, function(rows){
             socket.emit('allPixelsAt', rows);
@@ -280,8 +269,11 @@ io.on('connection', function (socket) {
     });
 
     socket.on('deleteTask', function(taskId){
-        deleteTask(taskId);
-        io.emit('deleteTask', taskId);
+      deleteTask(taskId, function(){
+        getAllTasks(function(rows){
+            io.emit('allTasks', rows);
+        });
+      });
     });
 
     socket.on('getAllTasks', function () {

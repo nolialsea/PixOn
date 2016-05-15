@@ -43,9 +43,8 @@ function addTask(task){
       task.task,
       state[task.state],
       new Date(task.dateCreation).yyyymmdd(),
-      'None <button type="button" class="btn btn-default btn-xs" aria-label="Left Align"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>'
+      'None <button type="button" onclick="removeTask('+task.id+')" class="btn btn-default btn-xs" aria-label="Left Align"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>'
     ]).draw(false);
-    $("#taskCounter").html((parseInt($("#taskCounter").html()) + 1).toString());
 }
 
 function removeTask(id){
@@ -71,12 +70,8 @@ socket.on('taskStates', function(taskStates){
     }
 });
 
-socket.on('deleteTask', function(taskId){
-    $("#ulTasks").children("#task_"+taskId).remove();
-});
-
 socket.on('allTasks', function(tasks){
-    $('#ulTasks').empty();
+    t.rows().remove().draw();
     for (var i=0; i<tasks.length; i++){
         addTask(tasks[i]);
     }
