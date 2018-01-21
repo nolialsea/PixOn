@@ -21,6 +21,7 @@ $(function(){
     var channel = 0;
     
     var pixelMap = [];
+    let lastPosAndColor = {x: -1, y: -1, color: null};
     initPixelMap();
 
     function initPixelMap(){
@@ -139,8 +140,13 @@ $(function(){
                 y = Math.floor((event.pageY - canvas.offsetTop)/conf.gridSize);
             
             if ( 0 <= x < conf.gridWidth && 0 <= y < conf.gridHeight){
-                var pix = pixel(channel, color, x, y);
-                socket.emit('pixel', pix);
+                if (lastPosAndColor.x != x || lastPosAndColor.y != y || lastPosAndColor.color != color){
+                    lastPosAndColor.x = x;
+                    lastPosAndColor.y = y;
+                    lastPosAndColor.color = color;
+                    var pix = pixel(channel, color, x, y);
+                    socket.emit('pixel', pix);
+                }
             }
         }
     }
