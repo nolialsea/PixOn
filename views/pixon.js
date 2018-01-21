@@ -10,7 +10,6 @@
 
 $(function(){
     $("#colorPickerContainer").draggable({ handle: "#dragSpan" });
-    $("#canvasGrid").hide();
 
     let drawingEnabled = false;
     let initialized = false;
@@ -59,14 +58,17 @@ $(function(){
     
     var socket = io(); // TIP: io() with no args does auto-discovery
     resizeCanvas();
+    drawLoadingMessage(ctx);
 
-    ctx.fillStyle = "rgb(255,255,255)";
-    ctx.fillRect(0,0,conf.gridSize*conf.gridWidth,conf.gridSize*conf.gridHeight);
-
-    ctx.fillStyle = "rgb(0,0,0)";
-    ctx.textAlign = "center";
-    ctx.font = "100px Arial";
-    ctx.fillText("Loading...",(conf.gridSize*conf.gridWidth)/2,(conf.gridSize*conf.gridHeight)/2);
+    function drawLoadingMessage(){
+        $("#canvasGrid").hide();
+        ctx.fillStyle = "rgb(255,255,255)";
+        ctx.fillRect(0,0,conf.gridSize*conf.gridWidth,conf.gridSize*conf.gridHeight);
+        ctx.fillStyle = "rgb(0,0,0)";
+        ctx.textAlign = "center";
+        ctx.font = "100px Arial";
+        ctx.fillText("Loading...",(conf.gridSize*conf.gridWidth)/2,(conf.gridSize*conf.gridHeight)/2);
+    }
     
     document.getElementById("body").addEventListener("dragover", function(e){e.preventDefault();}, true);
     document.getElementById("body").addEventListener("drop", function(e){
@@ -200,12 +202,14 @@ $(function(){
             var date = new Date(dateParts[0], parseInt(dateParts[1], 10) - 1, dateParts[2], timeParts[0], timeParts[1]);
             socket.emit('getAllPixelsAt', date.getTime());
             drawingEnabled = false;
+            drawLoadingMessage();
         }
     });
 
     $("#btnViewAtNow").on("click", function(){
         socket.emit('getAllPixelsAt', (new Date()).getTime());
         drawingEnabled = true;
+        drawLoadingMessage();
     });
     
     function resizeCanvas(){
