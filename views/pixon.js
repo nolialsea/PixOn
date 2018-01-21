@@ -10,6 +10,10 @@
 
 $(function(){
     $("#colorPickerContainer").draggable({ handle: "#dragSpan" });
+    $("#canvasGrid").hide();
+
+    let drawingEnabled = false;
+    let initialized = false;
     
     var conf = {
         gridSize: 6,
@@ -55,7 +59,14 @@ $(function(){
     
     var socket = io(); // TIP: io() with no args does auto-discovery
     resizeCanvas();
-    
+
+    ctx.fillStyle = "rgb(255,255,255)";
+    ctx.fillRect(0,0,conf.gridSize*conf.gridWidth,conf.gridSize*conf.gridHeight);
+
+    ctx.fillStyle = "rgb(0,0,0)";
+    ctx.textAlign = "center";
+    ctx.font = "100px Arial";
+    ctx.fillText("Loading...",(conf.gridSize*conf.gridWidth)/2,(conf.gridSize*conf.gridHeight)/2);
     
     document.getElementById("body").addEventListener("dragover", function(e){e.preventDefault();}, true);
     document.getElementById("body").addEventListener("drop", function(e){
@@ -135,7 +146,7 @@ $(function(){
     
     
     function clickEvent(event){
-        if (leftButtonDown == true){
+        if (leftButtonDown == true && drawingEnabled){
             var x = Math.floor((event.pageX - canvas.offsetLeft)/conf.gridSize),
                 y = Math.floor((event.pageY - canvas.offsetTop)/conf.gridSize);
             
@@ -188,11 +199,13 @@ $(function(){
 
             var date = new Date(dateParts[0], parseInt(dateParts[1], 10) - 1, dateParts[2], timeParts[0], timeParts[1]);
             socket.emit('getAllPixelsAt', date.getTime());
+            drawingEnabled = false;
         }
     });
 
     $("#btnViewAtNow").on("click", function(){
         socket.emit('getAllPixelsAt', (new Date()).getTime());
+        drawingEnabled = true;
     });
     
     function resizeCanvas(){
@@ -301,6 +314,11 @@ $(function(){
     });
     
     socket.on('pixels', function (pixs) {
+        if (!initialized){
+            initialized = true;
+            drawingEnabled = true;
+        }
+
         for (var i=0; i<pixs.length; i++){
             var pix = pixs[i];
             pixelMap[pix.channel][pix.x][pix.y] = pix;
