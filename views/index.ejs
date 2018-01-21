@@ -22,17 +22,19 @@
         <script src="views/bootstrap_color_picker/js/bootstrap-colorpicker-plus.js"></script>
         <script src="views/load-image.min.js"></script>
         <script src="views/socketio.js"></script>
-        <script src="views/pixon.js"></script>
+        
     </head>
 
     <style>
         .center{
+            padding: 0;
+            margin: auto;
             display: block;
-          	margin: auto;
-          	text-align: center;
-          	//position: absolute;
-          	left: 25%;
-          	top: 10px;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
         }
         .big{
             font-size: 100px;
@@ -68,6 +70,7 @@
             <div class="colorpickerplus-embed">
                 <div class="colorpickerplus-container"></div>
             </div>
+            Grid size <input id="inpGridSize" type="number" value="6" step="1"/>
             <button type="button" class="btn btn-default" id="sizeMinus">-</button>
             <button type="button" class="btn btn-default" id="sizePlus">+</button>
             <button type="button" class="btn btn-default" id="hideGrid">Grid ON/OFF</button>
@@ -80,5 +83,18 @@
         </div>
         <canvas class="center" id="canvas"></canvas>
         <canvas class="center" id="canvasGrid"></canvas>
+
+        
+
+        <script src="views/pixon.js"></script>
+
+        <script>
+            let pixs = <%- JSON.stringify(pixs) %>;
+            for (var i=0; i<pixs.length; i++){
+                var pix = pixs[i];
+                pixelMap[pix.channel][pix.x][pix.y] = pix;
+                drawPixel(pix);
+            }
+        </script>
     </body>
 </html>

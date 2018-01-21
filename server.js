@@ -13,7 +13,6 @@ app.use('/views', express.static(__dirname + '/views'));
 var db = new sqlite3.Database('db.db');
 
 db.serialize(function() {
-
   db.run("CREATE TABLE IF NOT EXISTS Pixel("+
       "id INTEGER PRIMARY KEY,"+
       "x INTEGER,"+
@@ -27,7 +26,9 @@ db.serialize(function() {
 });
 
 app.get('*', function(req, res) {
-	res.render('index');
+    getAllPixels(function(pixs){
+        res.render('index', {pixs});
+    });
 });
 
 var conf = {
@@ -101,10 +102,6 @@ io.on('connection', function (socket) {
       userId: 0
     };
 
-    getAllPixels(function(rows){
-        socket.emit('pixels', rows);
-    });
-
     socket.on('getAllPixelsAt', function (timestamp) {
         getAllPixelsAt(timestamp, function(rows){
             socket.emit('allPixelsAt', rows);
@@ -115,7 +112,6 @@ io.on('connection', function (socket) {
         if (validatePixel(pixel)){
           io.emit('pixel', pixel);
           insertPixel(pixel);
-
         }
     });
 
