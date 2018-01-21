@@ -21,16 +21,22 @@ $(function(){
     var channel = 0;
     
     var pixelMap = [];
-    for (var chan=0; chan<conf.nbChannel; chan++){
-        pixelMap[chan] = [];
-        for (var i=0; i<conf.gridHeight; i++){
-            pixelMap[chan][i] = [];
-            for (var j=0; j<conf.gridWidth; j++){
-                pixelMap[chan][i][j] = pixel(chan,255,255,255,i,j);
-                
+    initPixelMap();
+
+    function initPixelMap(){
+        pixelMap = [];
+        for (var chan=0; chan<conf.nbChannel; chan++){
+            pixelMap[chan] = [];
+            for (var i=0; i<conf.gridHeight; i++){
+                pixelMap[chan][i] = [];
+                for (var j=0; j<conf.gridWidth; j++){
+                    pixelMap[chan][i][j] = pixel(chan,255,255,255,i,j);
+                    
+                }
             }
         }
     }
+        
 
     var canvas = document.getElementById("canvas");
     var canvasGrid = document.getElementById("canvasGrid");
@@ -46,14 +52,12 @@ $(function(){
         color = col.substring(1, 7);
     });
     
-    
     var socket = io(); // TIP: io() with no args does auto-discovery
     resizeCanvas();
     
     
-    var target = document.getElementById("body");
-    target.addEventListener("dragover", function(e){e.preventDefault();}, true);
-    target.addEventListener("drop", function(e){
+    document.getElementById("body").addEventListener("dragover", function(e){e.preventDefault();}, true);
+    document.getElementById("body").addEventListener("drop", function(e){
     	e.preventDefault();
     	var loadingImage = loadImage(
             e.dataTransfer.files[0],
@@ -101,49 +105,33 @@ $(function(){
         delete keys[e.which];
     });
     
-    $("#canvas").mousedown(function(e){
+
+    function mouseClick(e){
         e.preventDefault();
         if(e.which === 1){ 
             leftButtonDown = true;
             clickEvent(e);
         }
-    });
-    $("#canvasGrid").mousedown(function(e){
-        e.preventDefault();
-        if(e.which === 1) {
-            leftButtonDown = true;
-            clickEvent(e);
-        }
-    });
+    }
+    $("#canvas").mousedown(mouseClick);
+    $("#canvasGrid").mousedown(mouseClick);
+
     $(document).mouseup(function(e){
         e.preventDefault();
         if(e.which === 1) leftButtonDown = false;
     });
 
-    function tweakMouseMoveEvent(e){
-        // Check from jQuery UI for IE versions < 9
-        if (!e.button && !(document.documentMode >= 9)) {
-            leftButtonDown = false;
-        }
 
-        // If left button is not set, set which to 0
-        // This indicates no buttons pressed
-        if(e.which === 1 && !leftButtonDown) e.which = 0;
+    function mouseMove(e) {
+        e.preventDefault();
+        if (leftButtonDown == true){
+            clickEvent(e);
+        }
     }
+    $("#canvas").mousemove(mouseMove);
+    $("#canvasGrid").mousemove(mouseMove);
 
-    $("#canvas").mousemove(function(e) {
-        e.preventDefault();
-        if (leftButtonDown == true){
-            clickEvent(e);
-        }
-    });
     
-    $("#canvasGrid").mousemove(function(e) {
-        e.preventDefault();
-        if (leftButtonDown == true){
-            clickEvent(e);
-        }
-    });
     
     function clickEvent(event){
         if (leftButtonDown == true){
@@ -184,9 +172,17 @@ $(function(){
     });
     
     $("#btnViewAtDate").on("click", function(){
-        var date = $("#viewAtDate").val();
-        console.log(date);
-        socket.emit('getAllPixelsAt', (new Date(date)).getTime());
+        if ($("#viewAtDate").val() != ""){
+            let hour = $("#viewAtTime").val() == "" ? "00:00" : $("#viewAtTime").val();
+            var dateString = $("#viewAtDate").val()+" "+hour,
+                dateTimeParts = dateString.split(' '),
+                timeParts = dateTimeParts[1].split(':'),
+                dateParts = dateTimeParts[0].split('-'),
+                date;
+
+            var date = new Date(dateParts[0], parseInt(dateParts[1], 10) - 1, dateParts[2], timeParts[0], timeParts[1]);
+            socket.emit('getAllPixelsAt', date.getTime());
+        }
     });
     
     function resizeCanvas(){
@@ -303,18 +299,7 @@ $(function(){
     });
     
     socket.on('allPixelsAt', function (pixs) {
-        var pixelMap = [];
-        for (var chan=0; chan<conf.nbChannel; chan++){
-            pixelMap[chan] = [];
-            for (var i=0; i<conf.gridHeight; i++){
-                pixelMap[chan][i] = [];
-                for (var j=0; j<conf.gridWidth; j++){
-                    pixelMap[chan][i][j] = pixel(chan,255,255,255,i,j);
-                    
-                }
-            }
-        }
-        
+        initPixelMap();
         resizeCanvas();
         
         for (var i=0; i<pixs.length; i++){
@@ -322,6 +307,5 @@ $(function(){
             pixelMap[pix.channel][pix.x][pix.y] = pix;
             drawPixel(pix);
         }
-        
     });
 });

@@ -22,10 +22,8 @@ db.serialize(function() {
       "g INTEGER,"+
       "b INTEGER,"+
       "channel INTEGER DEFAULT 0,"+
-      "owner INTEGER,"+
       "dateCreation INTEGER"+
   ")");
-
 });
 
 app.get('*', function(req, res) {
@@ -39,7 +37,6 @@ var conf = {
     nbChannel: 1
 };
 
-
 //PixOn
 function getPixel(arg0, arg1, arg2, arg3, arg4, arg5){
     return {channel: arg0, r:arg1,g:arg2,b:arg3,x:arg4,y:arg5};
@@ -49,15 +46,6 @@ function insertPixel(pix){
     var stmt = db.prepare("INSERT INTO Pixel (x, y, r, g, b, channel, dateCreation) VALUES (?,?,?,?,?,?,?)");
     stmt.run(pix.x, pix.y, pix.r, pix.g, pix.b, pix.channel, new Date().getTime());
     stmt.finalize();
-}
-
-
-function getPixelFromPosition(pixelX, pixelY, callback){
-    db.each("SELECT * FROM Task WHERE x="+pixelX+", y="+pixelY+" GROUP BY id", function(err, row){
-        if (!err){
-            callback(row);
-        }
-    });
 }
 
 function insertPixels(pixs){
