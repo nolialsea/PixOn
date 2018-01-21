@@ -116,8 +116,16 @@ io.on('connection', function (socket) {
     });
 
     socket.on('pixels', function (pixels) {
-      io.emit('pixels', pixels);
-      insertPixels(pixels);
+        let valid = true;
+        for (var i = 0; i < pixels.length; i++) {
+            if (!validatePixel(pixels[i])){
+                valid = false;
+            }
+        }
+        if (valid){
+            io.emit('pixels', pixels);
+            insertPixels(pixels);
+        }
     });
 
     socket.on('c', function (c) {

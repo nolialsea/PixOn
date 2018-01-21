@@ -146,6 +146,16 @@ $("#canvas").mousemove(mouseMove);
 $("#canvasGrid").mousemove(mouseMove);
 
 
+function fillRect(x,y,w,h,colorHex="#ffffff"){
+    let pixs = [];
+    for (var i = 0; i < w; i++) {
+        for (var j = 0; j < h; j++) {
+            pixs.push(pixel(0, colorHex.substr(1), x+i, y+j));
+        }
+    }
+    console.log(colorHex.substr(1));
+    socket.emit('pixels', pixs);
+}
 
 function clickEvent(event){
     if (leftButtonDown == true && drawingEnabled){

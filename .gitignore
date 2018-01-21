@@ -2,3 +2,5 @@ node_modules/*
 *.ftpconfig
 db.db
 *.db
+*.db
+db.db
