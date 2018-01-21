@@ -190,6 +190,10 @@ $(function(){
             socket.emit('getAllPixelsAt', date.getTime());
         }
     });
+
+    $("#btnViewAtNow").on("click", function(){
+        socket.emit('getAllPixelsAt', (new Date()).getTime());
+    });
     
     function resizeCanvas(){
         canvas.width = conf.gridSize*conf.gridWidth;
