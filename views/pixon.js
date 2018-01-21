@@ -12,8 +12,8 @@ $(function(){
     $("#colorPickerContainer").draggable({ handle: "#dragSpan" });
     $("#canvasGrid").hide();
 
-    let drawingEnabled = false;
-    let initialized = false;
+    let drawingEnabled = true;
+    let initialized = true;
     
     var conf = {
         gridSize: 6,
@@ -36,7 +36,6 @@ $(function(){
                 pixelMap[chan][i] = [];
                 for (var j=0; j<conf.gridWidth; j++){
                     pixelMap[chan][i][j] = pixel(chan,255,255,255,i,j);
-                    
                 }
             }
         }
@@ -60,9 +59,9 @@ $(function(){
     var socket = io(); // TIP: io() with no args does auto-discovery
     resizeCanvas();
 
+    //Loading message
     ctx.fillStyle = "rgb(255,255,255)";
     ctx.fillRect(0,0,conf.gridSize*conf.gridWidth,conf.gridSize*conf.gridHeight);
-
     ctx.fillStyle = "rgb(0,0,0)";
     ctx.textAlign = "center";
     ctx.font = "100px Arial";
