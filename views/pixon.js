@@ -59,7 +59,8 @@ colorPicker.on('changeColor', function(e, col){
     color = col.substring(1, 7);
 });
 
-var socket = io(); // TIP: io() with no args does auto-discovery
+
+var socket = io.connect('http://noli.space:4201/pixon'); // TIP: io() with no args does auto-discovery
 resizeCanvas();
 
 //Loading message
@@ -125,25 +126,33 @@ function mouseClick(e){
     if(e.which === 1){ 
         leftButtonDown = true;
         clickEvent(e);
+    }else if (e.which === 2){
+        var x = Math.floor((e.pageX - canvas.offsetLeft)/conf.gridSize),
+            y = Math.floor((e.pageY - canvas.offsetTop)/conf.gridSize);
+        pickColor(x,y);
     }
 }
 $("#canvas").mousedown(mouseClick);
 $("#canvasGrid").mousedown(mouseClick);
 
 $(document).mouseup(function(e){
-    e.preventDefault();
+    //e.preventDefault();
     if(e.which === 1) leftButtonDown = false;
 });
 
 
 function mouseMove(e) {
     e.preventDefault();
+    var x = Math.floor((e.pageX - canvas.offsetLeft)/conf.gridSize),
+        y = Math.floor((e.pageY - canvas.offsetTop)/conf.gridSize);
+    $("#spanPosition").text("Mouse pos : ["+x+","+y+"]");
     if (leftButtonDown == true){
         clickEvent(e);
     }
 }
-$("#canvas").mousemove(mouseMove);
-$("#canvasGrid").mousemove(mouseMove);
+
+$("#canvas").on("mousemove", mouseMove);
+$("#canvasGrid").on("mousemove", mouseMove);
 
 
 function fillRect(x,y,w,h,colorHex="#ffffff"){
@@ -153,8 +162,43 @@ function fillRect(x,y,w,h,colorHex="#ffffff"){
             pixs.push(pixel(0, colorHex.substr(1), x+i, y+j));
         }
     }
-    console.log(colorHex.substr(1));
     socket.emit('pixels', pixs);
+}
+
+function fillRect2(x1, y1, x2, y2, colorHex="#ffffff"){
+    let pixs = [];
+    for (var i = x1; i < x2; i++) {
+        for (var j = y1; j < y2; j++) {
+            pixs.push(pixel(0, colorHex.substr(1), i, j));
+        }
+    }
+    socket.emit('pixels', pixs);
+}
+
+function clear(colorHex="#ffffff"){
+    let pixs = [];
+    for (var i = 0; i < conf.gridWidth; i++) {
+        for (var j = 0; j < conf.gridHeight; j++) {
+            pixs.push(pixel(0, colorHex.substr(1), i, j));
+        }
+    }
+    socket.emit('pixels', pixs);
+}
+
+
+function componentToHex(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+
+function rgbToHex(r, g, b) {
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+}
+
+
+function pickColor(x,y){
+    color = rgbToHex(pixelMap[0][x][y].r, pixelMap[0][x][y].g, pixelMap[0][x][y].b).substr(1);
+    $(".colorpicker-element")[0].value = "#"+color;
 }
 
 function clickEvent(event){
@@ -212,7 +256,7 @@ $("#btnViewAtDate").on("click", function(){
 });
 
 $("#btnViewAtNow").on("click", function(){
-    socket.emit('getAllPixelsAt', (new Date()).getTime());
+    socket.emit('getAllPixels');
     drawingEnabled = true;
 });
 
@@ -345,3 +389,6 @@ socket.on('allPixelsAt', function (pixs) {
     }
 });
 
+socket.on('nbConnected', function(nb){
+    $("#spanNbConnected").html(nb+" connected");
+})

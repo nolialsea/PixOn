@@ -32,7 +32,7 @@
             display: block;
             position: absolute;
             top: 0;
-            bottom: 0;
+            /*bottom: 0;*/
             left: 0;
             right: 0;
         }
@@ -63,6 +63,10 @@
             float: right;
             font-size: 2.2em;
         }
+
+        #colorPickerContainer{
+            position: fixed;
+        }
     </style>
 
     <body id="body">
@@ -73,13 +77,16 @@
             Grid size <input id="inpGridSize" type="number" value="6" step="1"/>
             <button type="button" class="btn btn-default" id="sizeMinus">-</button>
             <button type="button" class="btn btn-default" id="sizePlus">+</button>
-            <button type="button" class="btn btn-default" id="hideGrid">Grid ON/OFF</button>
-            <hr>
-            <input type="date" id="viewAtDate"/>
+            <button type="button" class="btn btn-default" id="hideGrid">Grid ON/OFF</button><br><br>
+
+            <!-- <input type="date" id="viewAtDate"/>
             <input type="time" id="viewAtTime"/>
             <button type="button" class="btn btn-default" id="btnViewAtDate">View PixOn at this date</button>
-            <button type="button" class="btn btn-default" id="btnViewAtNow">Reload to now</button>
+            <button type="button" class="btn btn-default" id="btnViewAtNow">Reload to now</button> -->
+
             <span class="glyphicon glyphicon-move" id="dragSpan" aria-hidden="true"></span>
+            <span id="spanNbConnected"></span><br>
+            <span id="spanPosition"></span>
         </div>
         <canvas class="center" id="canvas"></canvas>
         <canvas class="center" id="canvasGrid"></canvas>
@@ -88,13 +95,7 @@
 
         <script src="views/pixon.js"></script>
 
-        <script>
-            let pixs = <%- JSON.stringify(pixs) %>;
-            for (var i=0; i<pixs.length; i++){
-                var pix = pixs[i];
-                pixelMap[pix.channel][pix.x][pix.y] = pix;
-                drawPixel(pix);
-            }
-        </script>
+        
+    
     </body>
 </html>
