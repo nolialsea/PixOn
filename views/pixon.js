@@ -13,6 +13,9 @@ $("#canvasGrid").hide();
 let drawingEnabled = true;
 let initialized = true;
 
+let mousePos = [-1,-1];
+let savedPos = [[-1,-1], [-1,-1]];
+
 var conf = {
     gridSize: 6,
     gridWidth: 128,
@@ -109,14 +112,35 @@ document.getElementById("body").addEventListener("drop", function(e){
 $(document).keydown(function (e) {
     //e.preventDefault();
     keys[e.which] = true;
+    console.log(e.which);
+
+    //FillRect tool
+    if(e.which == 49){
+        savedPos[0] = [mousePos[0], mousePos[1]];
+    }else if(e.which == 50){
+        savedPos[1] = [mousePos[0], mousePos[1]];
+    }else if(e.which == 51){
+        console.log(savedPos);
+        if (savedPos[0] && savedPos[1]){
+            if (savedPos[0][0] >= 0 && savedPos[0][0] < conf.gridWidth
+                && savedPos[0][1] >= 0 && savedPos[0][1] < conf.gridHeight
+                && savedPos[1][0] >= 0 && savedPos[1][0] < conf.gridWidth
+                && savedPos[1][1] >= 0 && savedPos[1][1] < conf.gridHeight){
+                fillRect2(savedPos[0][0], savedPos[0][1], savedPos[1][0], savedPos[1][1], "#"+color);
+            }
+        }
+        
+        savedPos = [[-1,-1], [-1,-1]];
+    }
 });
 
 $(document).keyup(function (e) {
     e.preventDefault();
-    if (keys[67] && keys[77]) {
-        var c = prompt();
-        socket.emit('c', c);
-    }
+
+    /*if (keys[49] && keys[50]) {
+        
+    }*/
+    
     delete keys[e.which];
 });
 
@@ -145,6 +169,8 @@ function mouseMove(e) {
     e.preventDefault();
     var x = Math.floor((e.pageX - canvas.offsetLeft)/conf.gridSize),
         y = Math.floor((e.pageY - canvas.offsetTop)/conf.gridSize);
+
+    mousePos = [x,y];
     $("#spanPosition").text("Mouse pos : ["+x+","+y+"]");
     if (leftButtonDown == true){
         clickEvent(e);
@@ -167,8 +193,18 @@ function fillRect(x,y,w,h,colorHex="#ffffff"){
 
 function fillRect2(x1, y1, x2, y2, colorHex="#ffffff"){
     let pixs = [];
-    for (var i = x1; i < x2; i++) {
-        for (var j = y1; j < y2; j++) {
+    /*if (x1 < x2){
+        let temp = x1;
+        x1 = x2;
+        x2 = temp;
+    }
+    if (y1 < y2){
+        let temp = y1;
+        y1 = y2;
+        y2 = temp;
+    }*/
+    for (var i = x1; i <= x2; i++) {
+        for (var j = y1; j <= y2; j++) {
             pixs.push(pixel(0, colorHex.substr(1), i, j));
         }
     }

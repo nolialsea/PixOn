@@ -11,7 +11,7 @@ var Database = require("Database.js");
 var db = Database.db;
 
 var pixelCounter = 0;
-var saveEveryXPixel = 128;
+var saveEveryXPixel = 1000;
 
 var conf = {
     gridSize: 6,
@@ -56,7 +56,9 @@ function drawPixels(pixs){
     for (var i = 0; i < pixs.length; i++) {
         drawPixel(pixs[i]);
     }
-    saveCanvas();
+    if (pixs.length >= 100){
+        saveCanvas();
+    }
 }
 
 function saveCanvas(){
@@ -70,13 +72,10 @@ function saveCanvas(){
     });
 
     stream.on('end', function(){
-        getAllPixels((pixs)=>{
-            io.of("/pixon").emit('pixels', pixs);
-            io.of("/pixonArchive").emit('newSave', [
-                canvas.toDataURL('image/jpeg', 1.0),
-                new Date(timestamp)
-            ]);
-        });
+        io.of("/pixonArchive").emit('newSave', [
+            '/views/archive/'+timestamp+'.png',
+            new Date(timestamp)
+        ]);
     });
 }
 

@@ -41,6 +41,11 @@
             overflow-x: scroll;
         }
 
+        *{
+            margin: 0px;
+            padding: 0px;
+        }
+
     </style>
 
     <body id="body">
@@ -54,7 +59,11 @@
             var socket = io.connect('http://noli.space:4201/pixonArchive'); // TIP: io() with no args does auto-discovery
 
             socket.on('newSave', function(d){
-                $("#container").prepend("<img src='"+d[0]+" title="+d[1]+"'/>");
+                console.log("ok");
+                $("#container").prepend("<img src='"+d[0]+"' title="+d[1]+"'/>");
+                $('html, body').animate({
+                    scrollTop: $("#body").offset().top
+                }, 0);
             });
         </script>
     </body>
