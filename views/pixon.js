@@ -174,7 +174,7 @@ $("#canvasGrid").mousedown(mouseClick);
 
 $(document).mouseup(function(e){
     //e.preventDefault();
-    if(e.which === 1) leftButtonDown = false;
+    leftButtonDown = false;
 });
 
 
@@ -206,16 +206,16 @@ function fillRect(x,y,w,h,colorHex="#ffffff"){
 
 function fillRect2(x1, y1, x2, y2, colorHex="#ffffff"){
     let pixs = [];
-    /*if (x1 < x2){
+    if (x1 > x2){
         let temp = x1;
         x1 = x2;
         x2 = temp;
     }
-    if (y1 < y2){
+    if (y1 > y2){
         let temp = y1;
         y1 = y2;
         y2 = temp;
-    }*/
+    }
     for (var i = x1; i <= x2; i++) {
         for (var j = y1; j <= y2; j++) {
             pixs.push(pixel(0, colorHex.substr(1), i, j));
@@ -266,6 +266,24 @@ function clickEvent(event){
         }
     }
 }
+
+window.addEventListener('wheel', function(e) {
+    if (keys[17]){
+        e.preventDefault();
+        if (e.deltaY < 0) {
+            conf.gridSize += 1;
+            $("#inpGridSize").val(conf.gridSize);
+            resizeCanvas();
+        }
+        if (e.deltaY > 0) {
+            if (conf.gridSize > 1){
+                conf.gridSize -= 1;
+            }
+            $("#inpGridSize").val(conf.gridSize);
+            resizeCanvas();
+        }
+    }
+});
 
 $("#sizeMinus").on("click", function(){
     if (conf.gridSize > 1){

@@ -11,7 +11,7 @@ var Database = require("Database.js");
 var db = Database.db;
 
 var pixelCounter = 0;
-var saveEveryXPixel = 1000;
+var saveEveryXPixel = 3000;
 
 var conf = {
     gridSize: 6,
@@ -39,6 +39,10 @@ app.get('/archive', function(req, res) {
     })
 
     res.render('archive', {files});
+});
+
+app.get('/help', function(req, res) {
+    res.render('help');
 });
 
 function drawPixel(pix){
