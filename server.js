@@ -56,15 +56,15 @@ function drawPixel(pix){
 }
 
 function drawPixels(pixs){
-    
+    if (pixs.length >= saveEveryXPixel){
+        pixelCounter -= pixs.length;
+    }
     for (var i = 0; i < pixs.length; i++) {
         drawPixel(pixs[i]);
     }
     if (pixs.length >= saveEveryXPixel){
         pixelCounter = 0;
         saveCanvas();
-    }else{
-        pixelCounter -= pixs.length;
     }
 }
 
