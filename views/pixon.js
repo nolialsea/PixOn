@@ -114,6 +114,19 @@ $(document).keydown(function (e) {
     keys[e.which] = true;
     console.log(e.which);
 
+    //Zoom shortcut
+    if(e.which == 109){
+        if (conf.gridSize > 1){
+            conf.gridSize -= 1;
+        }
+        $("#inpGridSize").val(conf.gridSize);
+        resizeCanvas();
+    }else if(e.which == 107){
+        conf.gridSize += 1;
+        $("#inpGridSize").val(conf.gridSize);
+        resizeCanvas();
+    }
+
     //FillRect tool
     if(e.which == 49){
         savedPos[0] = [mousePos[0], mousePos[1]];
@@ -147,13 +160,13 @@ $(document).keyup(function (e) {
 
 function mouseClick(e){
     e.preventDefault();
-    if(e.which === 1){ 
-        leftButtonDown = true;
-        clickEvent(e);
-    }else if (e.which === 2){
+    leftButtonDown = true;
+    if (e.which === 2 || keys[16] || keys[18]){
         var x = Math.floor((e.pageX - canvas.offsetLeft)/conf.gridSize),
             y = Math.floor((e.pageY - canvas.offsetTop)/conf.gridSize);
         pickColor(x,y);
+    }else if(e.which === 1){ 
+        clickEvent(e);
     }
 }
 $("#canvas").mousedown(mouseClick);
