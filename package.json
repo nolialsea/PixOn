@@ -2,12 +2,16 @@
   "name": "node-ejs",
   "description": "Noli's Pixel Online",
   "main": "server.js",
+  "scripts": {
+    "watch": "parcel watch src/client.js -d dist",
+    "build": "parcel build src/client.js -d dist",
+    "server": "node server.js"
+  },
   "dependencies": {
-    "ejs": "*",
-    "express": "^4.6.1",
-    "express-session": "*",
-    "socket.io": "~1.3.6",
-    "mysql": "*",
-    "canvas": "*"
+    "canvas": "*",
+    "ejs": "^2.5.7",
+    "express": "^4.16.2",
+    "socket.io": "^2.0.4",
+    "socket.io-client": "^2.0.4"
   }
 }

@@ -1,6 +1,7 @@
 const port = 8888
 
 const express = require('express')
+const path = require('path')
 const app = express()
 const server = app.listen(port)
 const io = require('socket.io').listen(server)
@@ -23,7 +24,7 @@ image.buffer = image.data.data.buffer
 image.buf32 = new Uint32Array(image.buffer)
 
 app.set('view engine', 'ejs')
-app.use('/views', express.static(__dirname + '/views'))
+app.use('/dist', express.static(__dirname + '/dist'))
 app.get('/', (req, res) => { res.render('index') })
 
 io.on('connection', socket => {

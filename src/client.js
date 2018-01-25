@@ -1,3 +1,9 @@
+import io from 'socket.io-client'
+import Canvas from './canvas'
+
+// TODO(flupe): split into several files
+//              so as to make the image object available to the server
+
 const { round } = Math
 const on = (target, ...args) => target.addEventListener(...args)
 
@@ -7,16 +13,7 @@ const HEIGHT = 128
 const socket = io.connect('ws://localhost:8888')
 const pointer = { x: 0, y: 0, down: false }
 
-
-const image = {}
-image.cvs = document.createElement('canvas')
-image.ctx = image.cvs.getContext('2d')
-image.cvs.width = WIDTH
-image.cvs.height = HEIGHT
-
-image.data = image.ctx.createImageData(WIDTH, HEIGHT)
-image.buffer = new Uint32Array(image.data.data.buffer)
-
+const image = new Canvas(document.createElement('canvas'), WIDTH, HEIGHT)
 
 const viewport = {
   setCursor(type) {
@@ -27,10 +24,28 @@ const viewport = {
   flip: { x: 1, y: 1 },
   scale: 3,
 }
+
 viewport.cvs = document.createElement('canvas')
 viewport.ctx = viewport.cvs.getContext('2d')
 viewport.cvs.width = window.innerWidth
 viewport.cvs.height = window.innerHeight
+
+viewport.update = function() {
+  let { ctx, cvs, offset, flip, scale } = viewport
+
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, cvs.width, cvs.height)
+
+  ctx.save()
+  ctx.translate(cvs.width / 2 + offset.x, cvs.height / 2 + offset.y)
+  ctx.scale(scale * flip.x, scale * flip.y)
+  ctx.translate(- WIDTH / 2 * flip.x, - HEIGHT / 2 * flip.y)
+
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(image.cvs, 0, 0, WIDTH * flip.x, HEIGHT * flip.y)
+
+  ctx.restore()
+}
 
 document.body.appendChild(viewport.cvs)
 
@@ -64,10 +79,9 @@ tool.pen = {
     let y = round((e.pageY - cvs.height / 2 - offset.y) / scale * flip.y + HEIGHT / 2)
 
     if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
-      let offset = x + y * WIDTH
-      image.buffer[offset] = activeColor
-      socket.emit('pixel', { offset, color: activeColor })
-      updateImage()
+      image.pixel(x, y, activeColor)
+      socket.emit('pixel', { x, y, color: activeColor })
+      viewport.update()
     }
   },
   keydown: ({key}) => { if (key == 'Alt') switchTool(tool.translate) }
@@ -99,7 +113,7 @@ tool.translate = {
     viewport.offset.y += pageY - this.origin.y
     this.origin.x = pageX
     this.origin.y = pageY
-    updateViewport()
+    viewport.update()
   },
   keyup: function({ key }) {
     if (key == 'Alt') {
@@ -129,54 +143,27 @@ tool.rectangle = {
 
     // TODO(flupe): synchronize cvs & its associated imagedata
     //              + benchmark the hell out of it (don't)
-    image.ctx.fillStyle = '#fff'
-    image.ctx.fillRect(x, y, width, height)
+    image.rect(x, y, width, height, activeColor)
     socket.emit('rect', { x, y, width, height })
-    updateViewport()
+    viewport.update()
   }
 }
 
 
 switchTool(tool.pen)
 
-function updateViewport() {
-  let { ctx, cvs, offset, flip, scale } = viewport
-
-  ctx.fillStyle = '#000'
-  ctx.fillRect(0, 0, cvs.width, cvs.height)
-
-  ctx.save()
-  ctx.translate(cvs.width / 2 + offset.x, cvs.height / 2 + offset.y)
-  ctx.scale(scale * flip.x, scale * flip.y)
-  ctx.translate(- WIDTH / 2 * flip.x, - HEIGHT / 2 * flip.y)
-
-  ctx.imageSmoothingEnabled = false
-  ctx.drawImage(image.cvs, 0, 0, WIDTH * flip.x, HEIGHT * flip.y)
-
-  ctx.restore()
-}
-
-function updateImage() {
-  let { ctx, data } = image
-  ctx.putImageData(data, 0, 0)
-  updateViewport()
-}
-
-
 socket.on('reload', ({ buffer }) => {
-  image.buffer.set(new Uint32Array(buffer))
-  updateImage()
+  // image.buffer.set(new Uint32Array(buffer))
 })
 
-socket.on('pixel', ({ offset, color }) => {
-  image.buffer[offset] = color
-  updateImage()
+socket.on('pixel', ({ x, y, color }) => {
+  image.pixel(x, y, color)
+  viewport.update()
 })
 
 socket.on('rect', ({ x, y, width, height }) => {
-  image.ctx.fillStyle = '#fff'
-  image.ctx.fillRect(x, y, width, height)
-  updateViewport()
+  image.rect(x, y, width, height, activeColor)
+  viewport.update()
 })
 
 
@@ -209,13 +196,13 @@ on(window, 'keydown', e => {
   if (e.key == '+' && e.ctrlKey) {
     e.preventDefault()
     viewport.scale += 1
-    updateViewport()
+    viewport.update()
   }
 
   else if (e.key == '-' && e.ctrlKey) {
     e.preventDefault()
     viewport.scale = Math.max(viewport.scale - 1, 1)
-    updateViewport()
+    viewport.update()
   }
 
   else if (e.key == 'r') {
@@ -228,12 +215,12 @@ on(window, 'keydown', e => {
 
   else if (e.key == 'f') {
     viewport.flip.x *= -1
-    updateViewport()
+    viewport.update()
   }
 
   else if (e.key == 'F') {
     viewport.flip.y *= -1
-    updateViewport()
+    viewport.update()
   }
 
   else {
@@ -259,18 +246,12 @@ on(window, 'drop', e => {
 
   let reader = new FileReader()
 
-  reader.addEventListener('load', e => {
+  on(reader, 'load', e => {
     let img = new Image()
 
-    img.addEventListener('load', () => {
-      let { ctx } = image
-
-      ctx.imageSmoothingEnabled = false
-      ctx.drawImage(img, 0, 0, WIDTH, HEIGHT)
-      image.data = ctx.getImageData(0, 0, WIDTH, HEIGHT)
-      image.buffer = new Uint32Array(image.data.data.buffer)
-
-      updateViewport()
+    on(img, 'load', () => {
+      image.replace(img)
+      viewport.update()
       socket.emit('upload', { buffer: image.buffer.buffer })
     })
 
@@ -284,7 +265,7 @@ on(window, 'drop', e => {
 on(window, 'resize', e => {
   viewport.cvs.width = window.innerWidth
   viewport.cvs.height = window.innerHeight
-  updateViewport()
+  viewport.update()
 })
 
-updateViewport()
+viewport.update()
