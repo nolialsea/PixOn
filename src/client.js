@@ -153,7 +153,9 @@ tool.rectangle = {
 switchTool(tool.pen)
 
 socket.on('reload', ({ buffer }) => {
-  // image.buffer.set(new Uint32Array(buffer))
+  image.buf32.set(new Uint32Array(buffer))
+  image.updateCanvas()
+  viewport.update()
 })
 
 socket.on('pixel', ({ x, y, color }) => {
@@ -252,7 +254,7 @@ on(window, 'drop', e => {
     on(img, 'load', () => {
       image.replace(img)
       viewport.update()
-      socket.emit('upload', { buffer: image.buffer.buffer })
+      socket.emit('upload', { buffer: image.buffer })
     })
 
     img.src = e.target.result

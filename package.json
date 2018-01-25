@@ -5,7 +5,7 @@
   "scripts": {
     "watch": "parcel watch src/client.js -d dist",
     "build": "parcel build src/client.js -d dist",
-    "server": "node server.js"
+    "server": "node --experimental-modules server.mjs"
   },
   "dependencies": {
     "canvas": "*",
