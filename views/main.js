@@ -1,12 +1,14 @@
+const { round } = Math
+const on = (target, ...args) => target.addEventListener(...args)
+
 const WIDTH = 128
 const HEIGHT = 128
 
-
-const socket = io.connect('localhost:8888/pixon')
+const socket = io.connect('ws://localhost:8888')
+const pointer = { x: 0, y: 0, down: false }
 
 
 const image = {}
-
 image.cvs = document.createElement('canvas')
 image.ctx = image.cvs.getContext('2d')
 image.cvs.width = WIDTH
@@ -16,18 +18,15 @@ image.data = image.ctx.createImageData(WIDTH, HEIGHT)
 image.buffer = new Uint32Array(image.data.data.buffer)
 
 
-// TODO(flupe): get rid of the 2nd canvas
 const viewport = {
   setCursor(type) {
     this.cvs.style.cursor = type
     this.cvs.style.cursor = '-webkit-' + type
   },
   offset: { x: 0, y: 0 },
-  flipX: 1,
-  flipY: 1,
+  flip: { x: 1, y: 1 },
   scale: 3,
-} 
-
+}
 viewport.cvs = document.createElement('canvas')
 viewport.ctx = viewport.cvs.getContext('2d')
 viewport.cvs.width = window.innerWidth
@@ -36,9 +35,9 @@ viewport.cvs.height = window.innerHeight
 document.body.appendChild(viewport.cvs)
 
 
+// TODO(flupe): palette manager
 let activeColor = 0xffffffff
 
-// drawing tools available
 
 const tool = {}
 let current = null
@@ -55,23 +54,27 @@ function switchTool(next) {
   tool.dispatch('init', previous)
 }
 
+// TODO(flupe): remove drawing operations duplication
 tool.pen = {
-  init: () => {
-    viewport.setCursor('crosshair')
-  },
+  init: _ => viewport.setCursor('crosshair'),
   mousemove: e => {
-    let { cvs, offset, scale, flipX, flipY } = viewport
-    let x = (e.pageX - cvs.width / 2 - offset.x) / scale * flipX + WIDTH / 2 | 0
-    let y = (e.pageY - cvs.height / 2 - offset.y) / scale * flipY + HEIGHT / 2 | 0
+    if (!pointer.down) return
+    let { cvs, offset, flip, scale } = viewport
+    let x = round((e.pageX - cvs.width / 2 - offset.x) / scale * flip.x + WIDTH / 2)
+    let y = round((e.pageY - cvs.height / 2 - offset.y) / scale * flip.y + HEIGHT / 2)
 
     if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
-      image.buffer[x + y * WIDTH] = activeColor
+      let offset = x + y * WIDTH
+      image.buffer[offset] = activeColor
+      socket.emit('pixel', { offset, color: activeColor })
       updateImage()
     }
   },
   keydown: ({key}) => { if (key == 'Alt') switchTool(tool.translate) }
 }
 
+// TODO(flupe): remove this as a tool
+//              and rather make it a tool `modifier`
 tool.translate = {
   origin: { x: 0, y: 0 },
   moving: false,
@@ -105,35 +108,52 @@ tool.translate = {
   }
 }
 
+// TODO(flupe): GUI
+tool.rectangle = {
+  init: _ => viewport.setCursor('crosshair'),
+  origin: { x: 0, y: 0 },
+  drawing: false,
+  mousedown: function(e) {
+    this.drawing = true
+    this.origin.x = pointer.x
+    this.origin.y = pointer.y
+  },
+  mouseup: function(e) {
+    if (!this.drawing) return
+    this.drawing = false
+
+    let x = this.origin.x
+    let y = this.origin.y
+    let width = pointer.x - x
+    let height = pointer.y - y
+
+    // TODO(flupe): synchronize cvs & its associated imagedata
+    //              + benchmark the hell out of it (don't)
+    image.ctx.fillStyle = '#fff'
+    image.ctx.fillRect(x, y, width, height)
+    socket.emit('rect', { x, y, width, height })
+    updateViewport()
+  }
+}
+
 
 switchTool(tool.pen)
 
 function updateViewport() {
-  let { ctx, cvs, offset, scale, flipX, flipY } = viewport
+  let { ctx, cvs, offset, flip, scale } = viewport
 
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, cvs.width, cvs.height)
 
-  let left = cvs.width / 2 + offset.x - WIDTH * scale / 2
-  let top = cvs.height / 2 + offset.y - HEIGHT * scale / 2
-  let width = WIDTH * scale
-  let height = WIDTH * scale
-
   ctx.save()
   ctx.translate(cvs.width / 2 + offset.x, cvs.height / 2 + offset.y)
-  ctx.scale(scale * flipX, scale * flipY)
-  ctx.translate(- WIDTH / 2 * flipX, - HEIGHT / 2 * flipY)
+  ctx.scale(scale * flip.x, scale * flip.y)
+  ctx.translate(- WIDTH / 2 * flip.x, - HEIGHT / 2 * flip.y)
 
   ctx.imageSmoothingEnabled = false
-  // TODO(flupe): maybe use directly putImageData
-  ctx.drawImage(image.cvs, 0, 0, WIDTH * flipX, HEIGHT * flipY)
+  ctx.drawImage(image.cvs, 0, 0, WIDTH * flip.x, HEIGHT * flip.y)
 
   ctx.restore()
-
-  ctx.strokeStyle = '#fff'
-  ctx.globalCompositeOperation = 'xor'
-  ctx.strokeRect((left | 0) - .5, (top | 0) - .5, width + 1, height + 1)
-  ctx.globalCompositeOperation = 'source-over'
 }
 
 function updateImage() {
@@ -142,21 +162,50 @@ function updateImage() {
   updateViewport()
 }
 
+
 socket.on('reload', ({ buffer }) => {
   image.buffer.set(new Uint32Array(buffer))
   updateImage()
 })
 
-const on = window.addEventListener.bind(window)
+socket.on('pixel', ({ offset, color }) => {
+  image.buffer[offset] = color
+  updateImage()
+})
+
+socket.on('rect', ({ x, y, width, height }) => {
+  image.ctx.fillStyle = '#fff'
+  image.ctx.fillRect(x, y, width, height)
+  updateViewport()
+})
+
+
+function updatePointer(e) {
+  let { cvs, offset, flip, scale } = viewport
+  pointer.x = round((e.pageX - cvs.width / 2 - offset.x) / scale * flip.x + WIDTH / 2)
+  pointer.y = round((e.pageY - cvs.height / 2 - offset.y) / scale * flip.y + HEIGHT / 2)
+}
 
 // TODO(flupe): see if using pointer events is more relevant (hint: it is)
-on('mousemove', e => { tool.dispatch('mousemove', e) })
-on('mousedown', e => { tool.dispatch('mousedown', e) })
-on('mouseup', e => { tool.dispatch('mouseup', e) })
+on(window, 'mousemove', e => {
+  updatePointer(e)
+  tool.dispatch('mousemove', e)
+})
 
-on('keydown', e => {
+on(window, 'mousedown', e => {
+  pointer.down = true
+  updatePointer(e)
+  tool.dispatch('mousedown', e)
+})
+
+on(window, 'mouseup', e => {
+  pointer.down = false
+  updatePointer(e)
+  tool.dispatch('mouseup', e)
+})
+
+on(window, 'keydown', e => {
   // scale shortcuts
-
   if (e.key == '+' && e.ctrlKey) {
     e.preventDefault()
     viewport.scale += 1
@@ -169,13 +218,21 @@ on('keydown', e => {
     updateViewport()
   }
 
+  else if (e.key == 'r') {
+    switchTool(tool.rectangle)
+  }
+
+  else if (e.key == 'b') {
+    switchTool(tool.pen)
+  }
+
   else if (e.key == 'f') {
-    viewport.flipX *= -1
+    viewport.flip.x *= -1
     updateViewport()
   }
 
   else if (e.key == 'F') {
-    viewport.flipY *= -1
+    viewport.flip.y *= -1
     updateViewport()
   }
 
@@ -185,16 +242,14 @@ on('keydown', e => {
 })
 
 
-on('keyup', e => { tool.dispatch('keyup', e) })
+on(window, 'keyup', e => tool.dispatch('keyup', e))
 
 
 // input file handling
 
-on('dragover', e => {
-  e.preventDefault()
-})
+on(window, 'dragover', e => e.preventDefault())
 
-on('drop', e => {
+on(window, 'drop', e => {
   e.preventDefault()
 
   let dt = e.dataTransfer
@@ -216,8 +271,7 @@ on('drop', e => {
       image.buffer = new Uint32Array(image.data.data.buffer)
 
       updateViewport()
-      console.log(image.data.data.buffer)
-      socket.emit('upload', { buffer: image.data.data.buffer })
+      socket.emit('upload', { buffer: image.buffer.buffer })
     })
 
     img.src = e.target.result
@@ -227,7 +281,7 @@ on('drop', e => {
 })
 
 
-on('resize', e => {
+on(window, 'resize', e => {
   viewport.cvs.width = window.innerWidth
   viewport.cvs.height = window.innerHeight
   updateViewport()

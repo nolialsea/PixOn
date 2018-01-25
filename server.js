@@ -3,11 +3,9 @@ const port = 8888
 const express = require('express')
 const app = express()
 const server = app.listen(port)
-const io = require('socket.io').listen(server).of('/pixon')
+const io = require('socket.io').listen(server)
 
-console.log(port + ' is the magic port')
-
-var config = {
+const config = {
   width: 128,
   height: 128,
 }
@@ -18,34 +16,26 @@ const Image = Canvas.Image
 const cvs = new Canvas(config.width, config.height)
 const ctx = cvs.getContext('2d')
 
-let data = ctx.createImageData(config.width, config.height)
-let buffer = new Uint32Array(data.data.buffer)
+const image = {}
 
+image.data = ctx.createImageData(config.width, config.height)
+image.buffer = image.data.data.buffer
+image.buf32 = new Uint32Array(image.buffer)
 
 app.set('view engine', 'ejs')
 app.use('/views', express.static(__dirname + '/views'))
-app.get('/', function(req, res) { res.render('index') })
+app.get('/', (req, res) => { res.render('index') })
 
-io.on('connection', (socket) => {
-  console.log('new peer!')
+io.on('connection', socket => {
   socket.emit('init', { config })
+  socket.emit('reload', { buffer: image.buffer })
 
-  // TODO(flupe): is this needed?
-  socket.data = { login: "", userId: 0 }
+  socket.on('reload', _ => socket.emit('reload', { buffer: image.buffer }))
 
-  socket.emit('reload', { buffer: data.data.buffer })
-
-  socket.on('reload', () => {
-    socket.emit('reload', { buffer: data.data.buffer })
-  })
-
-  socket.on('upload', (input) => {
-    let b = input.buffer
-    console.log(b.buffer)
-    let newbuf = b.buffer.slice(b.byteOffset, b.byteOffet + b.byteLength)
-    buffer.set(new Uint32Array(b.buffer, b.byteOffset, b.byteLength / Uint32Array.BYTES_PER_ELEMENT))
-    socket.broadcast.emit('reload', input)
-  })
-
+  // TODO(flupe): time validation
+  // TODO(flupe): sever copy of current state
+  socket.on('upload', input => socket.broadcast.emit('reload', input))
+  socket.on('pixel', input => socket.broadcast.emit('pixel', input))
+  socket.on('rect', input => socket.broadcast.emit('rect', input))
 })
 
