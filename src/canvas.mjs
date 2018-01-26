@@ -42,3 +42,15 @@ export default class Canvas {
 }
 
 
+export let handler = methods => ({
+  get: (target, name) => {
+    if (Object.keys(methods).includes(name)) {
+      console.log(name)
+      return function(...args) {
+        target[name](...args)
+        methods[name](...args)
+      }
+    }
+    else return target[name]
+  }
+})

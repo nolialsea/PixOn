@@ -1,5 +1,6 @@
 import io from 'socket.io-client'
 import Canvas from './canvas'
+import { handler } from './canvas'
 
 // TODO(flupe): split into several files
 //              so as to make the image object available to the server
@@ -15,6 +16,18 @@ const pointer = { x: 0, y: 0, down: false }
 
 const image = new Canvas(document.createElement('canvas'), WIDTH, HEIGHT)
 
+const proxy = new Proxy(image, handler({
+  rect: (x, y, width, height) => {
+    socket.emit('rect', { x, y, width, height })
+  },
+  pixel: (x, y, color) => {
+    socket.emit('pixel', { x, y, color })
+  },
+  replace: _ => {
+    socket.emit('upload', { buffer: image.buffer })
+  }
+}))
+
 const viewport = {
   setCursor(type) {
     this.cvs.style.cursor = type
@@ -27,8 +40,12 @@ const viewport = {
 
 viewport.cvs = document.createElement('canvas')
 viewport.ctx = viewport.cvs.getContext('2d')
-viewport.cvs.width = window.innerWidth
-viewport.cvs.height = window.innerHeight
+
+viewport.resize = _ => {
+  viewport.cvs.width = window.innerWidth
+  viewport.cvs.height = window.innerHeight
+  viewport.update()
+}
 
 viewport.update = function() {
   let { ctx, cvs, offset, flip, scale } = viewport
@@ -79,13 +96,13 @@ tool.pen = {
     let y = round((e.pageY - cvs.height / 2 - offset.y) / scale * flip.y + HEIGHT / 2)
 
     if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
-      image.pixel(x, y, activeColor)
-      socket.emit('pixel', { x, y, color: activeColor })
+      proxy.pixel(x, y, activeColor)
       viewport.update()
     }
   },
   keydown: ({key}) => { if (key == 'Alt') switchTool(tool.translate) }
 }
+
 
 // TODO(flupe): remove this as a tool
 //              and rather make it a tool `modifier`
@@ -143,8 +160,7 @@ tool.rectangle = {
 
     // TODO(flupe): synchronize cvs & its associated imagedata
     //              + benchmark the hell out of it (don't)
-    image.rect(x, y, width, height, activeColor)
-    socket.emit('rect', { x, y, width, height })
+    proxy.rect(x, y, width, height, activeColor)
     viewport.update()
   }
 }
@@ -252,9 +268,8 @@ on(window, 'drop', e => {
     let img = new Image()
 
     on(img, 'load', () => {
-      image.replace(img)
+      proxy.replace(img)
       viewport.update()
-      socket.emit('upload', { buffer: image.buffer })
     })
 
     img.src = e.target.result
@@ -264,10 +279,6 @@ on(window, 'drop', e => {
 })
 
 
-on(window, 'resize', e => {
-  viewport.cvs.width = window.innerWidth
-  viewport.cvs.height = window.innerHeight
-  viewport.update()
-})
+on(window, 'resize', viewport.resize)
 
-viewport.update()
+viewport.resize()

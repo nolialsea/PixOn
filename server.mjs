@@ -30,7 +30,10 @@ io.on('connection', socket => {
   socket.on('reload', _ => socket.emit('reload', { buffer: image.buffer }))
 
   // TODO(flupe): time validation
+
   socket.on('upload', input => {
+    let buf8 = new Uint8Array(image.buffer)
+    buf8.set(input.buffer)
     socket.broadcast.emit('reload', input)
   })
 
