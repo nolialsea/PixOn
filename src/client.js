@@ -1,24 +1,75 @@
 import io from 'socket.io-client'
-import Canvas from './canvas'
-import { handler } from './canvas'
+import Canvas, { handler } from './canvas'
 
-// TODO(flupe): split into several files
-//              so as to make the image object available to the server
-
-const { round } = Math
+const { round, max, min, floor, abs } = Math
 const on = (target, ...args) => target.addEventListener(...args)
 
 const WIDTH = 128
 const HEIGHT = 128
 
-const socket = io.connect('ws://localhost:8888')
-const pointer = { x: 0, y: 0, down: false }
 
 const image = new Canvas(document.createElement('canvas'), WIDTH, HEIGHT)
+const socket = io.connect(window.location.host)
+
+// TODO(flupe): temporary, factor this out as soon as I can
+
+let palette = [
+  [0, 0, 0], [34, 32, 52], [69, 40, 60], [102, 57, 49],
+  [143, 86, 59], [223, 113, 38], [217, 160, 102], [238, 195, 154],
+  [251, 242, 54], [153, 229, 80], [106, 190, 48], [55, 148, 110],
+  [75, 105, 47], [82, 75, 36], [50, 60, 57], [63, 63, 116],
+  [48, 96, 130], [91, 110, 225], [99, 155, 255], [95, 205, 228],
+  [203, 219, 252], [255, 255, 255], [155, 173, 183], [132, 126, 135],
+  [105, 106, 106], [89, 86, 82], [118, 66, 138], [172, 50, 50],
+  [217, 87, 99], [215, 123, 186], [143, 151, 74], [138, 111, 48]
+].map(([r, g, b]) => ({
+  hex: 0xff000000 | b << 16 | g << 8 | r,
+  string: `rgba(${r},${g},${b},1)`
+}))
+
+palette.primary = 12
+palette.secondary = 0
+
+let squares =  []
+
+;(function() {
+
+  let container = new DocumentFragment
+
+  palette.forEach((c, k) => {
+    let square = document.createElement('span')
+    square.className = 'square'
+    squares.push(square)
+    if (k == palette.primary)
+      square.className += ' primary'
+    if (k == palette.secondary)
+      square.className += ' secondary'
+    square.style.background = c.string
+    container.appendChild(square)
+    on(square, 'click', e => {
+      if (e.ctrlKey) {
+        squares[palette.secondary].className='square'+(palette.secondary==palette.primary?' primary':'')
+        squares[k].className += ' secondary'
+        palette.secondary = k
+      }
+      else {
+        squares[palette.primary].className='square'+(palette.secondary==palette.primary?' secondary':'')
+        squares[k].className += ' primary'
+        palette.primary = k
+      }
+    })
+  })
+
+  document.getElementById('palette').appendChild(container)
+
+})()
+
+let color = b => palette[b ? palette.secondary : palette.primary]
+
 
 const proxy = new Proxy(image, handler({
-  rect: (x, y, width, height) => {
-    socket.emit('rect', { x, y, width, height })
+  rect: (x, y, width, height, color) => {
+    socket.emit('rect', { x, y, width, height, color })
   },
   pixel: (x, y, color) => {
     socket.emit('pixel', { x, y, color })
@@ -27,6 +78,7 @@ const proxy = new Proxy(image, handler({
     socket.emit('upload', { buffer: image.buffer })
   }
 }))
+
 
 const viewport = {
   setCursor(type) {
@@ -54,12 +106,18 @@ viewport.update = function() {
   ctx.fillRect(0, 0, cvs.width, cvs.height)
 
   ctx.save()
-  ctx.translate(cvs.width / 2 + offset.x, cvs.height / 2 + offset.y)
+  ctx.translate(cvs.width / 2 + offset.x | 0, cvs.height / 2 + offset.y | 0)
   ctx.scale(scale * flip.x, scale * flip.y)
-  ctx.translate(- WIDTH / 2 * flip.x, - HEIGHT / 2 * flip.y)
+  ctx.translate(- WIDTH / 2, - HEIGHT / 2)
 
   ctx.imageSmoothingEnabled = false
-  ctx.drawImage(image.cvs, 0, 0, WIDTH * flip.x, HEIGHT * flip.y)
+  ctx.drawImage(image.cvs, 0, 0, WIDTH, HEIGHT)
+
+  ctx.globalCompositeOperation = 'xor'
+  ctx.strokeStyle = '#fff'
+  ctx.strokeRect(0 - .5, 0 - .5, WIDTH + 1, HEIGHT + 1)
+
+  tool.dispatch('render')
 
   ctx.restore()
 }
@@ -67,8 +125,13 @@ viewport.update = function() {
 document.body.appendChild(viewport.cvs)
 
 
-// TODO(flupe): palette manager
-let activeColor = 0xffffffff
+const pointer = { x: 0, y: 0, down: false }
+
+pointer.update = e => {
+  let { cvs, offset, flip, scale } = viewport
+  pointer.x = floor((e.pageX - cvs.width / 2 - offset.x) / scale * flip.x + WIDTH / 2)
+  pointer.y = floor((e.pageY - cvs.height / 2 - offset.y) / scale * flip.y + HEIGHT / 2)
+}
 
 
 const tool = {}
@@ -86,17 +149,16 @@ function switchTool(next) {
   tool.dispatch('init', previous)
 }
 
-// TODO(flupe): remove drawing operations duplication
 tool.pen = {
   init: _ => viewport.setCursor('crosshair'),
   mousemove: e => {
     if (!pointer.down) return
+
     let { cvs, offset, flip, scale } = viewport
-    let x = round((e.pageX - cvs.width / 2 - offset.x) / scale * flip.x + WIDTH / 2)
-    let y = round((e.pageY - cvs.height / 2 - offset.y) / scale * flip.y + HEIGHT / 2)
+    let { x, y } = pointer
 
     if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
-      proxy.pixel(x, y, activeColor)
+      proxy.pixel(x, y, color(e.ctrlKey))
       viewport.update()
     }
   },
@@ -139,6 +201,7 @@ tool.translate = {
   }
 }
 
+
 // TODO(flupe): GUI
 tool.rectangle = {
   init: _ => viewport.setCursor('crosshair'),
@@ -153,15 +216,28 @@ tool.rectangle = {
     if (!this.drawing) return
     this.drawing = false
 
-    let x = this.origin.x
-    let y = this.origin.y
-    let width = pointer.x - x
-    let height = pointer.y - y
+    let x = max(min(this.origin.x, pointer.x), 0)
+    let y = max(min(this.origin.y, pointer.y), 0)
+    let width = min(max(this.origin.x, pointer.x), image.cvs.width - 1) - x + 1
+    let height = min(max(this.origin.y, pointer.y), image.cvs.height - 1) - y + 1
 
-    // TODO(flupe): synchronize cvs & its associated imagedata
-    //              + benchmark the hell out of it (don't)
-    proxy.rect(x, y, width, height, activeColor)
+    proxy.rect(x, y, width, height, color(e.ctrlKey))
     viewport.update()
+  },
+  render: function() {
+    if (!this.drawing) return
+
+    let x = max(min(this.origin.x, pointer.x), 0)
+    let y = max(min(this.origin.y, pointer.y), 0)
+    let width = min(max(this.origin.x, pointer.x), image.cvs.width - 1) - x
+    let height = min(max(this.origin.y, pointer.y), image.cvs.height - 1) - y
+
+    let { ctx } = viewport
+
+    // TODO(flupe): for the life of me figure out why xor is not working
+    ctx.strokeStyle = '#fff'
+    ctx.globalCompositeOperation = 'xor'
+    ctx.strokeRect(x + .5, y + .5, width, height)
   }
 }
 
@@ -179,106 +255,78 @@ socket.on('pixel', ({ x, y, color }) => {
   viewport.update()
 })
 
-socket.on('rect', ({ x, y, width, height }) => {
-  image.rect(x, y, width, height, activeColor)
+socket.on('rect', ({ x, y, width, height, color }) => {
+  image.rect(x, y, width, height, color)
   viewport.update()
 })
 
 
-function updatePointer(e) {
-  let { cvs, offset, flip, scale } = viewport
-  pointer.x = round((e.pageX - cvs.width / 2 - offset.x) / scale * flip.x + WIDTH / 2)
-  pointer.y = round((e.pageY - cvs.height / 2 - offset.y) / scale * flip.y + HEIGHT / 2)
-}
-
-// TODO(flupe): see if using pointer events is more relevant (hint: it is)
+// TODO(flupe): add touch gestures
+//              apparently the Pointer API is far from mature yet
 on(window, 'mousemove', e => {
-  updatePointer(e)
+  pointer.update(e)
   tool.dispatch('mousemove', e)
+  viewport.update()
 })
 
 on(window, 'mousedown', e => {
+  pointer.update(e)
   pointer.down = true
-  updatePointer(e)
   tool.dispatch('mousedown', e)
 })
 
 on(window, 'mouseup', e => {
+  pointer.update(e)
   pointer.down = false
-  updatePointer(e)
   tool.dispatch('mouseup', e)
 })
 
 on(window, 'keydown', e => {
-  // scale shortcuts
   if (e.key == '+' && e.ctrlKey) {
     e.preventDefault()
     viewport.scale += 1
     viewport.update()
   }
-
   else if (e.key == '-' && e.ctrlKey) {
     e.preventDefault()
-    viewport.scale = Math.max(viewport.scale - 1, 1)
+    viewport.scale = max(viewport.scale - 1, 1)
     viewport.update()
   }
-
-  else if (e.key == 'r') {
+  else if (e.key == 'r')
     switchTool(tool.rectangle)
-  }
-
-  else if (e.key == 'b') {
+  else if (e.key == 'b')
     switchTool(tool.pen)
-  }
 
   else if (e.key == 'f') {
     viewport.flip.x *= -1
     viewport.update()
   }
-
   else if (e.key == 'F') {
     viewport.flip.y *= -1
     viewport.update()
   }
 
-  else {
-    tool.dispatch('keydown', e)
-  }
+  else tool.dispatch('keydown', e)
 })
 
-
 on(window, 'keyup', e => tool.dispatch('keyup', e))
-
-
-// input file handling
-
+on(window, 'resize', viewport.resize)
 on(window, 'dragover', e => e.preventDefault())
-
 on(window, 'drop', e => {
   e.preventDefault()
-
   let dt = e.dataTransfer
   let item = dt.items ? dt.items[0] : dt.files[0]
-
   if (!item.type.startsWith('image/')) return
-
   let reader = new FileReader()
-
   on(reader, 'load', e => {
     let img = new Image()
-
-    on(img, 'load', () => {
+    on(img, 'load', _ => {
       proxy.replace(img)
       viewport.update()
     })
-
     img.src = e.target.result
   })
-
   reader.readAsDataURL(item.getAsFile())
 })
-
-
-on(window, 'resize', viewport.resize)
 
 viewport.resize()

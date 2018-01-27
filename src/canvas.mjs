@@ -29,13 +29,12 @@ export default class Canvas {
 
   pixel(x, y, color) {
     let offset = x + y * this.cvs.width
-    this.buf32[offset] = color
+    this.buf32[offset] = color.hex
     this.updateCanvas()
   }
 
   rect(x, y, width, height, color) {
-    color = '#fff'
-    this.ctx.fillStyle = color
+    this.ctx.fillStyle = color.string
     this.ctx.fillRect(x, y, width, height)
     this.updateBuffers()
   }
